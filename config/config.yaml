@@ -1,0 +1,112 @@
+app:
+  name: XAUUSD SMC Bot
+  version: 1.0.0
+  symbol: XAUUSD-VIP
+  log_level: INFO
+  refresh_seconds: 60
+
+mt5:
+  timeout_seconds: 10
+  max_reconnect_attempts: 5
+  reconnect_backoff_seconds: 5
+
+dashboard:
+  theme: dark
+  default_timeframe: H1
+  available_timeframes:
+    - M5
+    - M15
+    - M30
+    - H1
+    - H4
+    - D1
+  chart_lookback_bars: 200
+
+strategy:
+  enabled: true
+  name: "LuxAlgo SMC"
+  # Active strategy (key from the strategy registry)
+  active_strategy: "luxalgo_smc"
+  # Default timeframes (used for swing mode)
+  higher_timeframe: "H4"
+  entry_timeframe: "M15"
+  # Scalp timeframes (used when mode is scalp)
+  scalp_higher_timeframe: "M15"
+  scalp_entry_timeframe: "M5"
+  # Mode: swing or scalp
+  mode: "swing"
+  # Ignore session filter (trade anytime)
+  ignore_session_filter: true
+  # Minimum swing strength (bars) to register a structure point
+  swing_length: 3
+  # Order block parameters
+  ob_lookback: 200
+  ob_min_displacement_atr: 0.5
+  ob_proximity_atr: 1.5
+  # FVG parameters
+  fvg_min_size_atr: 0.2
+  # Liquidity
+  liquidity_lookback: 100
+  liquidity_tolerance_atr: 0.5
+  # Volatility filters
+  min_volatility_pct: 0.05
+  max_volatility_pct: 5.0
+  min_sl_atr_mult: 0.1
+  # Session filter (UTC)
+  sessions:
+    london:   { start: 7,  end: 16, enabled: true }
+    new_york: { start: 12, end: 21, enabled: true }
+    asia:     { start: 0,  end: 8,  enabled: false }
+  # Minimum reward-to-risk
+  min_rr: 2.0
+  scalp_min_rr: 1.0
+  # Confidence threshold for actionable signal
+  confidence_threshold: 55
+  scalp_confidence_threshold: 50
+
+  # --- HF Scalping Strategy (Hybrid MA Crossover) ---
+  scalping:
+    higher_timeframe: "H1"
+    entry_timeframe: "M5"
+    fast_period: 5
+    slow_period: 20
+    # Long parameters
+    long_tp_points: 1500
+    long_sl_points: 400
+    long_position_pct: 0.02
+    # Short parameters
+    short_tp_points: 30
+    short_sl_points: 20
+    short_position_pct: 0.0002
+    # Risk
+    max_daily_loss_pct: 2.0
+    max_holding_hours_long: 24
+    max_holding_hours_short: 3
+    max_drawdown_pct: 15.0
+    # Confidence
+    min_confidence: 50.0
+    min_rr: 1.0
+    # ML confirmation (requires huggingface_hub + joblib)
+    use_ml_confirmation: false
+
+risk:
+  # Risk per trade as a percentage of equity (safte: 0.5%).
+  account_risk_pct: 0.5
+  daily_loss_limit_pct: 4.0
+  max_drawdown_pct: 12.0
+  max_concurrent_positions: 1
+  default_lot_size: 0.01
+  max_lot_size: 0.10
+  use_trailing_stop: true
+  trailing_stop_atr_mult: 1.5
+  break_even_after_rr: 1.0
+  use_partial_take_profit: true
+  partial_tp_rr: 1.0
+
+backtest:
+  default_symbol: XAUUSD
+  default_timeframe: H1
+  default_bars: 5000
+  initial_balance: 10000
+  commission_per_lot: 7.0
+  spread_points: 30
