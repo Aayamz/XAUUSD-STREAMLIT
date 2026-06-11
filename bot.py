@@ -238,15 +238,34 @@ class TradingBot:
         for p in positions:
             current = bid if p["type"] == "BUY" else ask
             act = self.trade_mgr.manage(p, df_ltf, current_price=current)
+
+            # Partial close (multi-TP)
+            if act.partial_closed and act.partial_close_volume is not None:
+                try:
+                    ok = self.client.partial_close_position(
+                        p["ticket"], act.partial_close_volume
+                    )
+                    if ok:
+                        log.info(
+                            "Partial close ticket=%s vol=%.2f — %s",
+                            p["ticket"], act.partial_close_volume, act.note,
+                        )
+                        notifier().send(
+                            f"🎯 <b>Partial TP</b> ticket <code>{p['ticket']}</code>\n"
+                            f"Closed {act.partial_close_volume} lots — {act.note}"
+                        )
+                    else:
+                        log.warning("Partial close failed for ticket %s", p["ticket"])
+                except Exception as e:  # noqa: BLE001
+                    log.error("Partial close error for %s: %s", p["ticket"], e)
+
+            # SL / TP modification
             if act.modified and act.new_sl is not None:
                 try:
                     self.client.modify_position(p["ticket"], sl=act.new_sl, tp=p.get("tp"))
                     log.info("Modified ticket %s: SL -> %.2f (%s)", p["ticket"], act.new_sl, act.note)
                 except Exception as e:  # noqa: BLE001
                     log.error("Modify failed for %s: %s", p["ticket"], e)
-            if act.partial_closed:
-                log.info("Partial TP hit on %s — close half manually (not implemented)", p["ticket"])
-                notifier().send(f"ℹ️ Partial TP hit on ticket {p['ticket']} — close 50% manually")
 
     def _log_signal(self, sig: Signal) -> None:
         import os

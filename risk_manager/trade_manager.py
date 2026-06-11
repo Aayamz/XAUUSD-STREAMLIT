@@ -1,8 +1,8 @@
-"""Active trade management: trailing stop, breakeven move, partial TP."""
+"""Active trade management: multiple TPs, trailing stop, breakeven move."""
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from data.indicators import atr
 from utils.config import get_config
@@ -21,19 +21,53 @@ class ManageAction:
     full_closed: bool = False
     new_sl: float | None = None
     new_tp: float | None = None
+    partial_close_volume: float | None = None
     note: str = ""
 
 
-class TradeManager:
-    """Maintains trailing stops, moves to BE, and applies partial TPs.
+# Default multi-TP levels: list of (rr_target, close_pct)
+DEFAULT_TP_LEVELS = [
+    {"rr": 1.0, "close_pct": 30},
+    {"rr": 2.0, "close_pct": 30},
+    {"rr": 3.0, "close_pct": 40},
+]
 
-    This class is stateless w.r.t. the broker — the caller is responsible for
-    passing in current position data and applying the returned actions.
+
+class TradeManager:
+    """Multi-TP, trailing stop, breakeven move, and partial closes.
+
+    TP levels are configured via ``risk.tp_levels`` in config.yaml::
+
+        tp_levels:
+          - rr: 1.0
+            close_pct: 30
+          - rr: 2.0
+            close_pct: 30
+          - rr: 3.0
+            close_pct: 40
+
+    Trailing stop activates after ``trailing_start_rr`` (default 1.0R).
     """
 
     def __init__(self, cfg: dict | None = None):
         self.cfg = cfg or get_config().get("risk", {})
-        self._partial_taken: set[int] = set()  # ticket -> partial already taken
+        self._tp_hit: dict[int, list[int]] = {}  # ticket -> indices of TP levels already hit
+        self._sl_moved_to_be: set[int] = set()   # tickets already moved to breakeven
+
+    # ------------------------------------------------------------------
+    def _tp_levels(self) -> list[dict]:
+        raw = self.cfg.get("tp_levels")
+        if raw and isinstance(raw, list) and len(raw) > 0:
+            return raw
+        return DEFAULT_TP_LEVELS
+
+    def _risk(self, position: dict) -> float:
+        side = position["type"]
+        entry = position["price_open"]
+        sl = position.get("sl") or 0.0
+        if side == "BUY":
+            return entry - sl
+        return sl - entry
 
     def manage(
         self,
@@ -45,79 +79,94 @@ class TradeManager:
         if df_ltf is None or len(df_ltf) < 20:
             return act
 
-        a = atr(df_ltf, 14).iloc[-1] or 1.0
+        a = float(atr(df_ltf, 14).iloc[-1]) or 1.0
         side = position["type"]
         entry = position["price_open"]
         sl = position.get("sl") or 0.0
         tp = position.get("tp") or 0.0
         ticket = position["ticket"]
+        volume = position.get("volume", 0.0)
 
-        # ---- Partial take-profit --------------------------------------------
-        if (
-            self.cfg.get("use_partial_take_profit", True)
-            and ticket not in self._partial_taken
-            and sl > 0  # Only if SL is set (avoid division by zero issues)
-        ):
-            target_rr = float(self.cfg.get("partial_tp_rr", 1.0))
-            if side == "BUY":
-                risk = entry - sl
-                if risk <= 0:  # Invalid risk, skip partial TP
-                    return act
-                partial_price = entry + risk * target_rr
-                if current_price >= partial_price:
-                    self._partial_taken.add(ticket)
+        risk = self._risk(position)
+        if risk <= 0:
+            return act
+
+        current_rr = ((current_price - entry) / risk) if side == "BUY" else ((entry - current_price) / risk)
+
+        # ---- 1. Multi-level take-profit -----------------------------------
+        if self.cfg.get("use_partial_take_profit", True) and volume > 0:
+            if ticket not in self._tp_hit:
+                self._tp_hit[ticket] = []
+            tp_levels = self._tp_levels()
+            for idx, level in enumerate(tp_levels):
+                if idx in self._tp_hit[ticket]:
+                    continue
+                target_rr = float(level.get("rr", 1.0))
+                close_pct = float(level.get("close_pct", 30))
+                if current_rr >= target_rr:
+                    close_vol = round(volume * close_pct / 100, 2)
+                    if close_vol <= 0:
+                        continue
+                    # Ensure we don't close more than remaining volume
+                    already_closed = sum(
+                        round(volume * tp_levels[i].get("close_pct", 30) / 100, 2)
+                        for i in self._tp_hit[ticket]
+                    )
+                    close_vol = min(close_vol, round(volume - already_closed, 2))
+                    if close_vol <= 0:
+                        continue
+                    self._tp_hit[ticket].append(idx)
                     act.partial_closed = True
-                    act.note = f"partial TP at {partial_price:.2f}"
-            else:  # SELL
-                risk = sl - entry
-                if risk <= 0:  # Invalid risk, skip partial TP
-                    return act
-                partial_price = entry - risk * target_rr
-                if current_price <= partial_price:
-                    self._partial_taken.add(ticket)
-                    act.partial_closed = True
-                    act.note = f"partial TP at {partial_price:.2f}"
+                    act.partial_close_volume = close_vol
+                    act.note = f"TP{idx+1} hit at {target_rr:.1f}R — closing {close_pct}% ({close_vol} lots)"
+                    log.info("TP%d hit ticket=%s rr=%.1f close=%.2f lots",
+                             idx + 1, ticket, target_rr, close_vol)
+                    break  # handle one TP level per tick
 
-        # ---- Breakeven move --------------------------------------------------
-        be_after_rr = self.cfg.get("break_even_after_rr", 0)
-        if be_after_rr > 0 and sl > 0:  # Only if SL is set
-            target_rr = float(be_after_rr)
-            if side == "BUY":
-                risk = entry - sl
-                if risk <= 0:  # Invalid risk, skip BE
-                    return act
-                be_trigger = entry + risk * target_rr
-                if current_price >= be_trigger and sl < entry:
-                    act.modified = True
-                    act.new_sl = entry
-                    sl = entry
-            else:
-                risk = sl - entry
-                if risk <= 0:  # Invalid risk, skip BE
-                    return act
-                be_trigger = entry - risk * target_rr
-                if current_price <= be_trigger and (sl == 0 or sl > entry):
-                    act.modified = True
-                    act.new_sl = entry
-                    sl = entry
+        # ---- 2. Breakeven move --------------------------------------------
+        be_after_rr = float(self.cfg.get("break_even_after_rr", 0))
+        if be_after_rr > 0 and sl > 0 and ticket not in self._sl_moved_to_be:
+            if side == "BUY" and current_rr >= be_after_rr and sl < entry:
+                act.modified = True
+                act.new_sl = entry
+                self._sl_moved_to_be.add(ticket)
+                sl = entry
+                log.info("BE move ticket=%s sl -> %.2f", ticket, entry)
+            elif side == "SELL" and current_rr >= be_after_rr and sl > entry:
+                act.modified = True
+                act.new_sl = entry
+                self._sl_moved_to_be.add(ticket)
+                sl = entry
+                log.info("BE move ticket=%s sl -> %.2f", ticket, entry)
 
-        # ---- Trailing stop ---------------------------------------------------
+        # ---- 3. Trailing stop ---------------------------------------------
         if self.cfg.get("use_trailing_stop", True):
             trail_mult = float(self.cfg.get("trailing_stop_atr_mult", 1.5))
-            if side == "BUY":
-                new_sl = current_price - trail_mult * a
-                # Only trail if it's profitable and we're not moving SL against the trade
-                if new_sl > sl and new_sl > entry:  # never move below entry
-                    act.modified = True
-                    act.new_sl = new_sl
-            else:
-                new_sl = current_price + trail_mult * a
-                # Only trail if it's profitable and we're not moving SL against the trade
-                if (sl == 0 or new_sl < sl) and new_sl < entry:
-                    act.modified = True
-                    act.new_sl = new_sl
+            # Only start trailing after we're at least trailing_start_rr in profit
+            trailing_start_rr = float(self.cfg.get("trailing_start_rr", 1.0))
+            if current_rr >= trailing_start_rr:
+                if side == "BUY":
+                    new_sl = current_price - trail_mult * a
+                    if new_sl > sl and new_sl > entry:
+                        act.modified = True
+                        act.new_sl = new_sl
+                else:
+                    new_sl = current_price + trail_mult * a
+                    if (sl == 0 or new_sl < sl) and new_sl < entry:
+                        act.modified = True
+                        act.new_sl = new_sl
+
+        # ---- 4. Full TP hit (MT5 auto-closes) -----------------------------
+        # If price reached the last TP level, MT5 will handle the close.
+        # We just clean up our tracking state.
+        if tp > 0:
+            if side == "BUY" and current_price >= tp:
+                self.forget(ticket)
+            elif side == "SELL" and current_price <= tp:
+                self.forget(ticket)
 
         return act
 
     def forget(self, ticket: int) -> None:
-        self._partial_taken.discard(ticket)
+        self._tp_hit.pop(ticket, None)
+        self._sl_moved_to_be.discard(ticket)

@@ -90,16 +90,34 @@ strategy:
     use_ml_confirmation: false
 
 risk:
-  # Risk per trade as a percentage of equity (safte: 0.5%).
+  # Risk per trade as a percentage of equity (safe: 0.5%).
   account_risk_pct: 0.5
   daily_loss_limit_pct: 4.0
   max_drawdown_pct: 12.0
   max_concurrent_positions: 1
   default_lot_size: 0.01
   max_lot_size: 0.10
+
+  # --- Multi-level take-profit ---
+  # Each level: { rr: <R:R target>, close_pct: <% of volume to close> }
+  # TPs are hit sequentially; remaining position stays open until final TP or SL.
+  tp_levels:
+    - rr: 1.0
+      close_pct: 30
+    - rr: 2.0
+      close_pct: 30
+    - rr: 3.0
+      close_pct: 40
+
+  # --- Trailing stop ---
   use_trailing_stop: true
   trailing_stop_atr_mult: 1.5
-  break_even_after_rr: 1.0
+  trailing_start_rr: 1.0  # start trailing only after this many R in profit
+
+  # --- Breakeven ---
+  break_even_after_rr: 1.0  # move SL to entry after this RR
+
+  # --- Partial take-profit (legacy, ignored if tp_levels is set) ---
   use_partial_take_profit: true
   partial_tp_rr: 1.0
 

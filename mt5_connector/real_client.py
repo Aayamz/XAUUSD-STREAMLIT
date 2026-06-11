@@ -317,6 +317,36 @@ class RealMT5Client:
         r = mt5.order_send(req)
         return bool(r and r.retcode == mt5.TRADE_RETCODE_DONE)
 
+    def partial_close_position(self, ticket: int, volume: float) -> bool:
+        """Close a partial volume of an open position."""
+        self._ensure()
+        pos_list = mt5.positions_get(ticket=ticket)
+        if not pos_list:
+            return False
+        p = pos_list[0]
+        if volume >= p.volume:
+            return self.close_position(ticket)
+        tick = mt5.symbol_info_tick(p.symbol)
+        if tick is None:
+            return False
+        close_type = mt5.ORDER_TYPE_SELL if p.type == mt5.ORDER_TYPE_BUY else mt5.ORDER_TYPE_BUY
+        price = tick.bid if close_type == mt5.ORDER_TYPE_SELL else tick.ask
+        req = {
+            "action": mt5.TRADE_ACTION_DEAL,
+            "symbol": p.symbol,
+            "volume": float(volume),
+            "type": close_type,
+            "position": ticket,
+            "price": price,
+            "deviation": 20,
+            "magic": p.magic,
+            "comment": "partial_close_by_bot",
+            "type_time": mt5.ORDER_TIME_GTC,
+            "type_filling": mt5.ORDER_FILLING_IOC,
+        }
+        r = mt5.order_send(req)
+        return bool(r and r.retcode == mt5.TRADE_RETCODE_DONE)
+
     def modify_position(self, ticket: int, sl: float | None = None, tp: float | None = None) -> bool:
         self._ensure()
         req: dict[str, Any] = {"action": mt5.TRADE_ACTION_SLTP, "position": ticket}

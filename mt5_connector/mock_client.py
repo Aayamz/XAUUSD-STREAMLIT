@@ -242,8 +242,8 @@ class MockMT5Client:
             "ticket": p["ticket"],
             "deal": int(uuid.uuid4().int % 1_000_000),
             "symbol": p["symbol"],
-            "type": 1 if p["type"] == "BUY" else 0,  # rough mapping
-            "entry": 1,  # OUT
+            "type": 1 if p["type"] == "BUY" else 0,
+            "entry": 1,
             "volume": p["volume"],
             "price": self._current_bid() if p["type"] == "BUY" else self._current_ask(),
             "profit": round(pnl, 2),
@@ -255,6 +255,39 @@ class MockMT5Client:
         self.deals.append(deal)
         log.info("[MOCK] CLOSE ticket=%s pnl=%.2f", ticket, pnl)
         del self.positions[ticket]
+        return True
+
+    def partial_close_position(self, ticket: int, volume: float) -> bool:
+        p = self.positions.get(ticket)
+        if not p:
+            return False
+        if volume >= p["volume"]:
+            return self.close_position(ticket)
+        # Partial close: reduce volume and record partial PnL
+        close_price = self._current_bid() if p["type"] == "BUY" else self._current_ask()
+        contract = 100.0
+        if p["type"] == "BUY":
+            pnl = (close_price - p["price_open"]) * volume * contract
+        else:
+            pnl = (p["price_open"] - close_price) * volume * contract
+        self.balance += pnl
+        p["volume"] = round(p["volume"] - volume, 2)
+        deal = {
+            "ticket": p["ticket"],
+            "deal": int(uuid.uuid4().int % 1_000_000),
+            "symbol": p["symbol"],
+            "type": 1 if p["type"] == "BUY" else 0,
+            "entry": 1,
+            "volume": volume,
+            "price": close_price,
+            "profit": round(pnl, 2),
+            "swap": 0.0,
+            "commission": 0.0,
+            "time": int(time.time()),
+            "comment": "mock partial close",
+        }
+        self.deals.append(deal)
+        log.info("[MOCK] PARTIAL CLOSE ticket=%s vol=%.2f pnl=%.2f", ticket, volume, pnl)
         return True
 
     def modify_position(self, ticket: int, sl: float | None = None, tp: float | None = None) -> bool:

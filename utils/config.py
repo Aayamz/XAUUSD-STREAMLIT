@@ -144,6 +144,7 @@ def _validate_config(config: dict[str, Any]) -> dict[str, Any]:
     risk_cfg.setdefault("max_lot_size", 0.10)
     risk_cfg.setdefault("use_trailing_stop", True)
     risk_cfg.setdefault("trailing_stop_atr_mult", 1.5)
+    risk_cfg.setdefault("trailing_start_rr", 1.0)
     risk_cfg.setdefault("break_even_after_rr", 1.0)
     risk_cfg.setdefault("use_partial_take_profit", True)
     risk_cfg.setdefault("partial_tp_rr", 1.0)
@@ -170,11 +171,25 @@ def _validate_config(config: dict[str, Any]) -> dict[str, Any]:
     trail_mult = risk_cfg.get("trailing_stop_atr_mult", 1.5)
     risk_cfg["trailing_stop_atr_mult"] = max(0.1, min(float(trail_mult), 5.0))
 
+    trail_start = risk_cfg.get("trailing_start_rr", 1.0)
+    risk_cfg["trailing_start_rr"] = max(0.1, min(float(trail_start), 10.0))
+
     be_after = risk_cfg.get("break_even_after_rr", 1.0)
     risk_cfg["break_even_after_rr"] = max(0.1, min(float(be_after), 10.0))
 
     partial_tp = risk_cfg.get("partial_tp_rr", 1.0)
     risk_cfg["partial_tp_rr"] = max(0.1, min(float(partial_tp), 10.0))
+
+    # Validate tp_levels: list of {rr, close_pct}
+    tp_levels = risk_cfg.get("tp_levels")
+    if tp_levels and isinstance(tp_levels, list):
+        valid_levels = []
+        for level in tp_levels:
+            if isinstance(level, dict) and "rr" in level and "close_pct" in level:
+                rr = max(0.1, min(float(level["rr"]), 100.0))
+                pct = max(1.0, min(float(level["close_pct"]), 100.0))
+                valid_levels.append({"rr": rr, "close_pct": pct})
+        risk_cfg["tp_levels"] = valid_levels
 
     # Validate backtest section
     if "backtest" not in validated:
