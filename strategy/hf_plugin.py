@@ -125,6 +125,14 @@ class HFPlugin:
                 raise ImportError(f"Cannot load {self.model_type} model")
             self._loaded = True
             log.info("Loaded local model: %s", path)
+        except KeyError as e:
+            msg = (
+                f"Model {path.name} was saved with a different library version "
+                f"(KeyError: {e}). Retrain or re-export the model with the "
+                f"current numpy/scikit-learn version."
+            )
+            log.error(msg)
+            raise ImportError(msg) from e
         except Exception as e:
             log.error("Failed to load model %s: %s", path, e)
             raise
@@ -240,11 +248,14 @@ class HFPlugin:
                 if df_ltf is None or len(df_ltf) < 30:
                     return self._neutral("insufficient data")
 
-                features = self._plugin.build_features(df_ltf)
-                if features.empty:
-                    return self._neutral("no features computed")
+                try:
+                    features = self._plugin.build_features(df_ltf)
+                    if features.empty:
+                        return self._neutral("no features computed")
 
-                result = self._plugin.predict(features.iloc[[-1]])
+                    result = self._plugin.predict(features.iloc[[-1]])
+                except (ImportError, KeyError, Exception) as e:
+                    return self._neutral(f"model load/predict failed: {e}")
                 pred = result.get("prediction")
                 conf = result.get("confidence", 0.0)
 
