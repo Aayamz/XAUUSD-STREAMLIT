@@ -381,4 +381,6 @@ def load_preset(name: str, **overrides) -> HFPlugin:
     if name not in PRESET_MODELS:
         raise ValueError(f"Unknown preset: {name}. Available: {list(PRESET_MODELS.keys())}")
     cfg = {**PRESET_MODELS[name], **overrides}
+    # Remove display-only keys that are not HFPlugin parameters
+    cfg.pop("label", None)
     return HFPlugin.from_repo(**cfg)
