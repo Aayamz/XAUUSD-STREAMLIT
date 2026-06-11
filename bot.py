@@ -246,13 +246,15 @@ class TradingBot:
                         p["ticket"], act.partial_close_volume
                     )
                     if ok:
+                        remaining = round(p.get("volume", 0) - act.partial_close_volume, 2)
                         log.info(
-                            "Partial close ticket=%s vol=%.2f — %s",
-                            p["ticket"], act.partial_close_volume, act.note,
+                            "Partial close ticket=%s vol=%.2f remaining=%.2f — %s",
+                            p["ticket"], act.partial_close_volume, remaining, act.note,
                         )
                         notifier().send(
                             f"🎯 <b>Partial TP</b> ticket <code>{p['ticket']}</code>\n"
-                            f"Closed {act.partial_close_volume} lots — {act.note}"
+                            f"Closed {act.partial_close_volume} lots — {act.note}\n"
+                            f"Remaining: {remaining} lots"
                         )
                     else:
                         log.warning("Partial close failed for ticket %s", p["ticket"])

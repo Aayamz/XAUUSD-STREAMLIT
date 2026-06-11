@@ -61,13 +61,25 @@ class TradeManager:
             return raw
         return DEFAULT_TP_LEVELS
 
-    def _risk(self, position: dict) -> float:
+    def _risk(self, position: dict, atr_val: float = 1.0) -> float:
+        """Return the risk distance (entry - SL or SL - entry).
+
+        If the position has no SL or SL is at/above entry (for BUY),
+        fall back to 1.5 * ATR so that TP/BE/trailing logic can still operate.
+        """
         side = position["type"]
         entry = position["price_open"]
-        sl = position.get("sl") or 0.0
+        sl = position.get("sl")
+
+        if sl is None or sl == 0:
+            return atr_val * 1.5
+
         if side == "BUY":
-            return entry - sl
-        return sl - entry
+            risk = entry - sl
+            return risk if risk > 0 else atr_val * 1.5
+        else:
+            risk = sl - entry
+            return risk if risk > 0 else atr_val * 1.5
 
     def manage(
         self,
@@ -87,11 +99,19 @@ class TradeManager:
         ticket = position["ticket"]
         volume = position.get("volume", 0.0)
 
-        risk = self._risk(position)
+        risk = self._risk(position, atr_val=a)
         if risk <= 0:
             return act
 
-        current_rr = ((current_price - entry) / risk) if side == "BUY" else ((entry - current_price) / risk)
+        if side == "BUY":
+            current_rr = (current_price - entry) / risk
+        else:
+            current_rr = (entry - current_price) / risk
+
+        log.debug(
+            "manage ticket=%s side=%s entry=%.2f sl=%.2f cur=%.2f risk=%.2f rr=%.2f",
+            ticket, side, entry, sl, current_price, risk, current_rr,
+        )
 
         # ---- 1. Multi-level take-profit -----------------------------------
         if self.cfg.get("use_partial_take_profit", True) and volume > 0:
@@ -105,6 +125,8 @@ class TradeManager:
                 close_pct = float(level.get("close_pct", 30))
                 if current_rr >= target_rr:
                     close_vol = round(volume * close_pct / 100, 2)
+                    # Ensure minimum close volume (0.01 lot)
+                    close_vol = max(close_vol, 0.01)
                     if close_vol <= 0:
                         continue
                     # Ensure we don't close more than remaining volume

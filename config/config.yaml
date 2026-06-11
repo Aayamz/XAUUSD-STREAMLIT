@@ -96,7 +96,7 @@ risk:
   max_drawdown_pct: 12.0
   max_concurrent_positions: 1
   default_lot_size: 0.01
-  max_lot_size: 0.10
+  max_lot_size: 0.01
 
   # --- Multi-level take-profit ---
   # Each level: { rr: <R:R target>, close_pct: <% of volume to close> }
