@@ -1,5 +1,5 @@
 @echo off
-REM XAUUSD SMC Bot launcher (Windows) — self-contained setup + run
+REM AURIC - XAUUSD Trading Bot launcher (Windows)
 setlocal EnableDelayedExpansion
 cd /d "%~dp0"
 
@@ -39,7 +39,7 @@ if not exist .env (
 REM --- menu ------------------------------------------------------------------
 echo.
 echo ============================================================
-echo  XAUUSD SMC Bot  -  install OK
+echo  AURIC  -  XAUUSD Trading Bot
 echo ============================================================
 echo   1) Trading loop only
 echo   2) Trading loop + dashboard

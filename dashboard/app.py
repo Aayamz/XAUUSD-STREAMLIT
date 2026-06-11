@@ -72,8 +72,8 @@ def _render_appbar() -> None:
         f"""
         <div class="xc-appbar">
           <div class="brand">
-            <div class="logo">X</div>
-            <span>XAUUSD SMC Bot</span>
+            <div class="logo">A</div>
+            <span>AURIC</span>
             <span class="xc-badge xc-badge-accent" style="margin-left:6px">{strategy_mode}</span>
           </div>
           <div class="meta">
