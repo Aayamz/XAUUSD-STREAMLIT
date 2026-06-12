@@ -172,46 +172,31 @@ def _sidebar_html() -> str:
 # ── Render sidebar ───────────────────────────────────────────────────
 st.markdown(_sidebar_html(), unsafe_allow_html=True)
 
-# Offset main content
-st.markdown(
-    f'<style>'
-    f'.block-container{{margin-left:{SIDEBAR_W}px;padding:1rem 1.5rem 2.5rem;box-sizing:border-box}}'
-    f'</style>',
-    unsafe_allow_html=True,
-)
-
-# ── Strategy selector (in main content, top bar) ────────────────────
+# ── Strategy selector (inline, not in columns) ──────────────────────
 from strategy import list_strategies  # noqa: E402
 
 _strategies = list_strategies()
 _strategy_names = [s["name"] for s in _strategies] if _strategies else ["luxalgo_smc"]
-_strategy_labels = [s.get("label", s["name"]) for s in _strategies] if _strategies else ["LuxAlgo SMC"]
 
-_top1, _top2 = st.columns([3, 1], gap="medium")
-with _top1:
-    st.markdown(
-        f'<div style="font-size:18px;font-weight:600;color:#e6edf3;margin-top:4px">'
-        f'{current_page}</div>',
-        unsafe_allow_html=True,
-    )
-with _top2:
-    try:
-        _idx = _strategy_names.index(active_strategy)
-    except ValueError:
-        _idx = 0
-    _sel = st.selectbox(
-        "Active strategy",
-        options=_strategy_names,
-        format_func=lambda n: next(
-            (s.get("label", s["name"]) for s in _strategies if s["name"] == n), n
-        ),
-        index=_idx,
-        key="_strategy_select",
-        label_visibility="collapsed",
-    )
-    if _sel != active_strategy:
-        st.query_params.update(strategy=_sel, page=current_page, mode=current_mode)
-        st.rerun()
+try:
+    _idx = _strategy_names.index(active_strategy)
+except ValueError:
+    _idx = 0
+
+_sel = st.selectbox(
+    "Strategy",
+    options=_strategy_names,
+    format_func=lambda n: next(
+        (s.get("label", s["name"]) for s in _strategies if s["name"] == n), n
+    ),
+    index=_idx,
+    key="_strategy_select",
+    label_visibility="collapsed",
+    width="content",
+)
+if _sel != active_strategy:
+    st.query_params.update(strategy=_sel, page=current_page, mode=current_mode)
+    st.rerun()
 
 # ── Route to view ────────────────────────────────────────────────────
 from dashboard.views import (  # noqa: E402

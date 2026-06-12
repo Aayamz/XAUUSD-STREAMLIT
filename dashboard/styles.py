@@ -22,8 +22,9 @@ footer { display: none !important; }
 
 /* ══ MAIN CONTENT AREA ══ */
 .block-container {
-    padding: 0 1.5rem 2.5rem !important;
-    max-width: 100% !important;
+    margin-left: 200px !important;
+    padding: 0.5rem 1.5rem 2.5rem !important;
+    max-width: calc(100% - 200px) !important;
 }
 
 /* ══ SCROLLBAR ══ */
