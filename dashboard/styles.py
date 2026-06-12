@@ -17,14 +17,13 @@ def inject_global_styles():
     #MainMenu, footer, header { visibility: hidden; }
     .block-container { padding-top: 4.5rem !important; padding-bottom: 3rem; max-width: 1400px; }
 
-    /* ── Sidebar — icon-only, 64px ── */
+    /* ── Sidebar ── */
     [data-testid="stSidebar"] {
-        min-width: 64px !important;
-        max-width: 64px !important;
+        min-width: 220px !important;
+        max-width: 220px !important;
         background: #111418 !important;
         border-right: 1px solid #1e2329;
     }
-    [data-testid="stSidebar"] .stRadio label span { display: none; }
     [data-testid="stSidebar"] > div:first-child { padding: 0.75rem 0; }
 
     /* ── Scrollbar ── */
