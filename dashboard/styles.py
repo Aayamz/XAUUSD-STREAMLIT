@@ -13,154 +13,103 @@ def inject_global_styles():
     #MainMenu, footer, header, [data-testid="stToolbar"],
     [data-testid="stDecoration"] { display: none !important; }
 
-    /* Hide sidebar toggle button in the header */
-    [data-testid="stHeader"] button[data-testid="stSidebarCollapseButton"],
-    [data-testid="stHeader"] [aria-label="Close sidebar"],
-    [data-testid="stHeader"] [aria-label="Open sidebar"] {
-        display: none !important;
-    }
+    /* ── HIDE the entire Streamlit sidebar ── */
+    [data-testid="stSidebar"] { display: none !important; }
 
-    /* ── Sidebar: always expanded, fixed width, custom look ── */
-    [data-testid="stSidebar"] {
-        background: #0d1117 !important;
-        border-right: 1px solid #21262d !important;
-        width: 240px !important;
-        min-width: 240px !important;
-        max-width: 240px !important;
-    }
-    [data-testid="stSidebar"] > div:first-child {
-        padding-top: 1rem !important;
-    }
-
-    /* Hide the collapse arrow inside the sidebar */
-    [data-testid="stSidebar"] button[title="Close sidebar"],
-    [data-testid="stSidebar"] [aria-label="Close sidebar"] {
-        display: none !important;
-    }
-
-    /* ── Main content: offset for fixed sidebar ── */
+    /* ── Main content: full width, no sidebar offset ── */
     .block-container {
         padding-top: 4.5rem !important;
         padding-bottom: 3rem !important;
-        padding-left: 2rem !important;
         max-width: 1400px !important;
-        margin-left: 240px !important;
+        padding-left: 2rem !important;
+        padding-right: 2rem !important;
     }
 
-    /* When sidebar is collapsed by Streamlit (shouldn't happen now), compensate */
-    [data-testid="stSidebar"][aria-expanded="false"] ~ .main .block-container {
-        margin-left: 0 !important;
+    /* ── Custom sidebar column ── */
+    .sb-panel {
+        background: #0d1117;
+        border-right: 1px solid #21262d;
+        min-height: calc(100vh - 4.5rem);
+        padding: 16px 0;
+        position: sticky;
+        top: 4.5rem;
     }
+    .sb-brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 0 16px 16px 16px;
+        border-bottom: 1px solid #21262d;
+        margin-bottom: 8px;
+    }
+    .sb-brand-logo {
+        width: 36px; height: 36px; border-radius: 10px;
+        background: linear-gradient(135deg, #f0b90b 0%, #b88800 100%);
+        display: flex; align-items: center; justify-content: center;
+        color: #0a0e1a; font-weight: 800; font-size: 1.1rem;
+        box-shadow: 0 2px 8px rgba(240, 185, 11, 0.35);
+        flex-shrink: 0;
+    }
+    .sb-brand-text { font-weight: 600; font-size: 1rem; color: #e8eaed; }
+    .sb-brand-sub { font-size: 0.7rem; color: #6b7385; }
+
+    .sb-section {
+        font-size: 9px;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: #484f58;
+        padding: 12px 16px 4px 16px;
+        font-weight: 600;
+    }
+    .sb-divider {
+        border-top: 1px solid #21262d;
+        margin: 8px 16px;
+    }
+    .sb-nav-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 16px;
+        margin: 1px 8px;
+        border-radius: 8px;
+        color: #8b949e;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: default;
+    }
+    .sb-nav-item.active {
+        background: rgba(240, 185, 11, 0.08);
+        color: #f0b90b;
+    }
+    .sb-nav-icon { width: 18px; text-align: center; font-size: 14px; flex-shrink: 0; }
+
+    .sb-status {
+        padding: 8px 16px;
+        font-size: 11px;
+        color: #484f58;
+        line-height: 1.6;
+    }
+
+    /* ── Hide radio labels used for navigation ── */
+    .sb-hidden-radio { display: none !important; }
 
     /* ── Scrollbar ── */
     ::-webkit-scrollbar { width: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: #2a2e35; border-radius: 2px; }
 
-    /* ── Sidebar nav items ── */
-    .sb-nav-item {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 8px 14px;
-        margin: 2px 8px;
-        border-radius: 8px;
-        cursor: pointer;
-        color: #8b949e;
-        font-size: 13px;
-        font-weight: 500;
-        transition: all 0.15s;
-        text-decoration: none;
-    }
-    .sb-nav-item:hover { background: #161b22; color: #e6edf3; }
-    .sb-nav-item.active {
-        background: rgba(240,185,11,0.08);
-        color: #f0b90b;
-        border-left: 3px solid #f0b90b;
-        padding-left: 11px;
-    }
-    .sb-nav-icon {
-        width: 18px;
-        text-align: center;
-        font-size: 14px;
-        flex-shrink: 0;
-    }
-    .sb-section-label {
-        font-size: 9px;
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
-        color: #484f58;
-        padding: 12px 14px 4px 14px;
-        font-weight: 600;
-    }
-
-    /* Hide the default radio buttons used for navigation */
-    .sb-nav-radio { display: none !important; }
-
-    /* ── Sidebar controls styling ── */
-    [data-testid="stSidebar"] .stToggle > div { gap: 6px !important; }
-    [data-testid="stSidebar"] .stToggle label { font-size: 12px !important; }
-    [data-testid="stSidebar"] .stSlider { font-size: 11px !important; }
-    [data-testid="stSidebar"] .stSelectbox label { font-size: 11px !important; }
-
-    /* ── Sidebar divider ── */
-    .sb-divider {
-        border-top: 1px solid #21262d;
-        margin: 8px 14px;
-    }
-
-    /* ── Sidebar status ── */
-    .sb-status {
-        padding: 8px 14px;
-        font-size: 11px;
-        color: #484f58;
-        line-height: 1.6;
-    }
-
     /* ── Card base ── */
-    .tb-card {
-        background: #161b22;
-        border: 0.5px solid #21262d;
-        border-radius: 10px;
-        padding: 12px 14px;
-    }
-    .tb-section-label {
-        font-size: 10px;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        color: #6e7681;
-        margin-bottom: 6px;
-    }
-    .tb-label {
-        font-size: 10px;
-        text-transform: uppercase;
-        letter-spacing: 0.07em;
-        color: #8b949e;
-        margin-bottom: 3px;
-    }
-    .tb-value {
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 17px;
-        font-weight: 500;
-        color: #e6edf3;
-    }
-    .tb-value-sm {
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 14px;
-        font-weight: 500;
-        color: #e6edf3;
-    }
+    .tb-card { background: #161b22; border: 0.5px solid #21262d; border-radius: 10px; padding: 12px 14px; }
+    .tb-section-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #6e7681; margin-bottom: 6px; }
+    .tb-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.07em; color: #8b949e; margin-bottom: 3px; }
+    .tb-value { font-family: 'JetBrains Mono', monospace; font-size: 17px; font-weight: 500; color: #e6edf3; }
+    .tb-value-sm { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 500; color: #e6edf3; }
     .tb-value-danger  { color: #f85149; }
     .tb-value-success { color: #3fb950; }
     .tb-value-warning { color: #d29922; }
     .tb-value-muted   { color: #8b949e; }
 
-    /* ── Pills ── */
-    .tb-pill {
-        display: inline-flex; align-items: center; gap: 4px;
-        padding: 2px 8px; border-radius: 20px;
-        font-size: 11px; font-weight: 500;
-    }
+    .tb-pill { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 500; }
     .tb-pill-short  { background: #3d1a1a; color: #f85149; }
     .tb-pill-long   { background: #122a1e; color: #3fb950; }
     .tb-pill-live   { background: #122a1e; color: #3fb950; }
@@ -168,109 +117,25 @@ def inject_global_styles():
     .tb-pill-action { background: #122a1e; color: #3fb950; }
     .tb-pill-off    { background: #3d1a1a; color: #f85149; }
 
-    /* ── Reason tags ── */
-    .tb-tag {
-        display: inline-flex;
-        padding: 2px 8px; border-radius: 20px;
-        font-size: 10px;
-        border: 0.5px solid #30363d;
-        color: #8b949e;
-        white-space: nowrap;
-    }
+    .tb-tag { display: inline-flex; padding: 2px 8px; border-radius: 20px; font-size: 10px; border: 0.5px solid #30363d; color: #8b949e; white-space: nowrap; }
+    .tb-metric { background: #0d1117; border-radius: 8px; padding: 8px 10px; }
 
-    /* ── Metric cards ── */
-    .tb-metric {
-        background: #0d1117;
-        border-radius: 8px;
-        padding: 8px 10px;
-    }
-
-    /* ── Market strip ── */
-    .tb-market-strip {
-        background: #161b22;
-        border-bottom: 0.5px solid #21262d;
-        display: flex;
-        gap: 0;
-    }
-    .tb-market-cell {
-        flex: 1;
-        padding: 8px 14px;
-        border-right: 0.5px solid #21262d;
-    }
+    .tb-market-strip { background: #161b22; border-bottom: 0.5px solid #21262d; display: flex; gap: 0; }
+    .tb-market-cell { flex: 1; padding: 8px 14px; border-right: 0.5px solid #21262d; }
     .tb-market-cell:last-child { border-right: none; }
 
-    /* ── Strategy card ── */
-    .sm-card {
-        background: #161b22;
-        border: 0.5px solid #21262d;
-        border-radius: 10px;
-        padding: 12px;
-    }
+    .sm-card { background: #161b22; border: 0.5px solid #21262d; border-radius: 10px; padding: 12px; }
     .sm-card-featured { border: 1.5px solid #1f6feb; }
-    .sm-code-tag {
-        display: inline-flex;
-        padding: 1px 6px; border-radius: 4px;
-        font-size: 10px;
-        font-family: 'JetBrains Mono', monospace;
-        background: #0d1117; color: #8b949e;
-    }
-    .sm-btn {
-        padding: 5px 12px;
-        border: 0.5px solid #30363d;
-        border-radius: 8px;
-        font-size: 11px;
-        cursor: pointer;
-        background: transparent;
-        color: #8b949e;
-        font-family: 'Inter', sans-serif;
-    }
-    .sm-btn-active {
-        background: #122a1e;
-        border: none;
-        color: #3fb950;
-        font-weight: 500;
-    }
+    .sm-code-tag { display: inline-flex; padding: 1px 6px; border-radius: 4px; font-size: 10px; font-family: 'JetBrains Mono', monospace; background: #0d1117; color: #8b949e; }
+    .sm-btn { padding: 5px 12px; border: 0.5px solid #30363d; border-radius: 8px; font-size: 11px; cursor: pointer; background: transparent; color: #8b949e; font-family: 'Inter', sans-serif; }
+    .sm-btn-active { background: #122a1e; border: none; color: #3fb950; font-weight: 500; }
 
-    /* ── Header bar ── */
-    .tb-header {
-        display: flex; align-items: center; justify-content: space-between;
-        padding: 8px 16px;
-        background: #161b22;
-        border-bottom: 0.5px solid #21262d;
-        margin-bottom: 0;
-    }
+    .tb-header { display: flex; align-items: center; justify-content: space-between; padding: 8px 16px; background: #161b22; border-bottom: 0.5px solid #21262d; margin-bottom: 0; }
+    .tb-cta-btn { background: #2d2208; color: #d29922; border: none; border-radius: 8px; padding: 8px 18px; font-size: 13px; font-weight: 500; cursor: pointer; font-family: 'Inter', sans-serif; display: inline-flex; align-items: center; gap: 5px; }
 
-    /* ── CTA button ── */
-    .tb-cta-btn {
-        background: #2d2208;
-        color: #d29922;
-        border: none;
-        border-radius: 8px;
-        padding: 8px 18px;
-        font-size: 13px;
-        font-weight: 500;
-        cursor: pointer;
-        font-family: 'Inter', sans-serif;
-        display: inline-flex; align-items: center; gap: 5px;
-    }
-
-    /* ── Signal history table ── */
-    .tb-signal-table {
-        width: 100%; border-collapse: collapse;
-        font-size: 12px; font-family: 'JetBrains Mono', monospace;
-    }
-    .tb-signal-table th {
-        font-size: 10px; text-transform: uppercase;
-        letter-spacing: 0.06em; color: #6e7681;
-        padding: 6px 10px; border-bottom: 0.5px solid #21262d;
-        font-family: 'Inter', sans-serif; font-weight: 400;
-        text-align: left;
-    }
-    .tb-signal-table td {
-        padding: 8px 10px;
-        border-bottom: 0.5px solid #161b22;
-        color: #c9d1d9;
-    }
+    .tb-signal-table { width: 100%; border-collapse: collapse; font-size: 12px; font-family: 'JetBrains Mono', monospace; }
+    .tb-signal-table th { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: #6e7681; padding: 6px 10px; border-bottom: 0.5px solid #21262d; font-family: 'Inter', sans-serif; font-weight: 400; text-align: left; }
+    .tb-signal-table td { padding: 8px 10px; border-bottom: 0.5px solid #161b22; color: #c9d1d9; }
     .tb-signal-table tr:nth-child(even) td { background: #0d1117; }
 
     /* ── Legacy xc- classes ── */
