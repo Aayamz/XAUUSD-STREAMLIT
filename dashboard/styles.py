@@ -14,36 +14,11 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 [data-testid="stHeader"],
 [data-testid="stToolbar"],
 [data-testid="stDecoration"],
+/* Hide default sidebar — navigation lives in fixed rail rendered in main content */
+[data-testid="stSidebar"],
 [data-testid="stSidebarNav"],
 [data-testid="stSidebarNav"] + div,
 footer { display: none !important; }
-
-/* Hide the radio / selectbox / any widget in the sidebar */
-[data-testid="stSidebar"] .stRadio,
-[data-testid="stSidebar"] .stSelectbox,
-[data-testid="stSidebar"] .stCheckbox,
-[data-testid="stSidebar"] .stToggle,
-[data-testid="stSidebar"] label,
-[data-testid="stSidebar"] .row-widget,
-[data-testid="stSidebar"] [data-testid="stWidgetLabel"] { display: none !important; }
-
-/* ══ SIDEBAR — slim icon rail ══ */
-[data-testid="stSidebar"] {
-    min-width: 60px !important;
-    max-width: 60px !important;
-    background: #0d1117 !important;
-    border-right: 0.5px solid #21262d !important;
-    overflow: hidden !important;
-}
-[data-testid="stSidebar"] > div:first-child {
-    padding: 0 !important;
-    width: 60px !important;
-    overflow: hidden !important;
-}
-[data-testid="stSidebarContent"] {
-    padding: 0 !important;
-    overflow-x: hidden !important;
-}
 
 /* ══ MAIN CONTENT AREA ══ */
 .block-container {
