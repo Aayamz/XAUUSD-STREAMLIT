@@ -27,6 +27,9 @@ footer { display: none !important; }
     max-width: calc(100% - 200px) !important;
 }
 
+/* Strategy selector — constrain width */
+[data-testid="stSelectbox"] { max-width: 280px !important; }
+
 /* ══ SCROLLBAR ══ */
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
