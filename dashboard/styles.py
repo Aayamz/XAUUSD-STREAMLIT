@@ -19,8 +19,6 @@ def inject_global_styles():
 
     /* ── Sidebar ── */
     [data-testid="stSidebar"] {
-        min-width: 220px !important;
-        max-width: 220px !important;
         background: #111418 !important;
         border-right: 1px solid #1e2329;
     }
