@@ -18,99 +18,95 @@ from utils.config import PROJECT_ROOT
 SIGNAL_LOG = PROJECT_ROOT / "logs" / "signals.jsonl"
 
 
-def _badge(direction: str) -> str:
-    return {
-        "LONG":   "xc-badge-long",
-        "SHORT":  "xc-badge-short",
-        "NEUTRAL":"xc-badge-neutral",
-    }.get(direction, "xc-badge-neutral")
-
-
-def _confidence_tone(c: float) -> str:
-    if c >= 70: return "up"
-    if c >= 55: return "accent"
-    return "down"
-
-
 def _render_current(sig, account, info, strategy_name: str | None = None) -> None:
     direction = sig.direction.value
-    cls = _badge(direction)
     conf = float(sig.confidence)
-    tone = _confidence_tone(conf)
-    eq = (account or {}).get("equity") if account else None
-    eq_str = f"${eq:,.2f}" if eq else "—"
-    strategy_label = next((s["label"] for s in list_strategies() if s["name"] == strategy_name), strategy_name or "—")
+    entry = sig.entry
+    sl = sig.stop_loss
+    tp = sig.take_profit
+    rr = sig.rr
+    reasons = sig.reasons
 
-    cols_top = st.columns([3, 1])
-    with cols_top[0]:
-        st.markdown(
-            f"""
-            <div class="xc-card">
-              <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-                <span class="xc-badge {cls}" style="font-size:0.85rem;padding:5px 12px">{direction}</span>
-                <span class="xc-stat-{tone}" style="font-size:1.6rem;font-weight:700">
-                  {conf:.0f}%
-                </span>
-                <span style="color:var(--text-muted)">HTF {sig.htf_bias}</span>
-                <span style="margin-left:auto;color:var(--text-muted);font-size:0.75rem">
-                  {strategy_label}
-                </span>
-              </div>
-              <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:18px">
-                <div>
-                  <div style="color:var(--text-muted);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em">Entry</div>
-                  <div style="font-size:1.3rem;font-weight:600">{sig.entry:.2f}</div>
-                </div>
-                <div>
-                  <div style="color:var(--text-muted);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em">Stop Loss</div>
-                  <div style="font-size:1.3rem;font-weight:600" class="xc-pnl-neg">{sig.stop_loss:.2f}</div>
-                </div>
-                <div>
-                  <div style="color:var(--text-muted);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em">Take Profit</div>
-                  <div style="font-size:1.3rem;font-weight:600" class="xc-pnl-pos">{sig.take_profit:.2f}</div>
-                </div>
-                <div>
-                  <div style="color:var(--text-muted);font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em">R:R</div>
-                  <div style="font-size:1.3rem;font-weight:600" class="xc-stat-accent">{sig.rr:.2f}</div>
-                </div>
-              </div>
-              <div style="margin-top:18px;border-top:1px solid var(--border);padding-top:14px">
-                <p class="xc-section-title" style="margin:0 0 8px 0">Reasoning</p>
-                <ul class="xc-reasons-list">{"".join(f"<li>{r}</li>" for r in sig.reasons)}</ul>
-              </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+    strategy_label = next(
+        (s["label"] for s in list_strategies() if s["name"] == strategy_name),
+        strategy_name or "—",
+    )
 
-    with cols_top[1]:
-        st.markdown(
-            f"""
-            <div class="xc-card">
-              <p class="xc-section-title" style="margin-top:0">Context</p>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:0.85rem">
-                <div style="color:var(--text-muted)">Account equity</div>
-                <div style="text-align:right"><b>{eq_str}</b></div>
-                <div style="color:var(--text-muted)">HTF bias</div>
-                <div style="text-align:right"><b>{sig.htf_bias}</b></div>
-                <div style="color:var(--text-muted)">Session</div>
-                <div style="text-align:right"><b>{sig.session or '—'}</b></div>
-                <div style="color:var(--text-muted)">Last close</div>
-                <div style="text-align:right">
-                  <b>{(sig.metadata or {}).get('last_close', 0):.2f}</b>
-                </div>
-              </div>
+    # SVG arc ring maths
+    circumference = 226.19
+    offset = round(circumference * (1 - conf / 100), 2)
+    dir_color = "#f85149" if direction == "SHORT" else "#3fb950"
+    arc_color = "#d29922"
+    risk_pts = round(abs(entry - sl), 2) if entry and sl else 0
+    reward_pts = round(abs(tp - entry), 2) if tp and entry else 0
+
+    reasons_html = "".join(f'<span class="tb-tag">{r}</span>' for r in reasons)
+
+    st.markdown(f"""
+    <div class="tb-card" style="margin-bottom:8px">
+      <div style="display:flex;gap:16px;align-items:flex-start">
+        <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0">
+          <svg width="96" height="96" viewBox="0 0 96 96">
+            <circle cx="48" cy="48" r="36" fill="none" stroke="#21262d" stroke-width="7"/>
+            <circle cx="48" cy="48" r="36" fill="none" stroke="{arc_color}" stroke-width="7"
+              stroke-dasharray="{circumference}" stroke-dashoffset="{offset}"
+              stroke-linecap="round" transform="rotate(-90 48 48)"/>
+            <text x="48" y="44" text-anchor="middle" font-size="10" font-weight="500"
+              style="fill:{dir_color};font-family:Inter,sans-serif">{direction}</text>
+            <text x="48" y="62" text-anchor="middle" font-size="19" font-weight="500"
+              style="fill:{arc_color};font-family:'JetBrains Mono',monospace">{conf:.0f}%</text>
+          </svg>
+          <div style="font-size:10px;color:#6e7681;text-transform:uppercase;letter-spacing:.07em;margin-top:-4px">Confidence</div>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px">
+            <div>
+              <div class="tb-label">Entry</div>
+              <div class="tb-value-sm">{entry:,.2f}</div>
             </div>
-            """,
-            unsafe_allow_html=True,
-        )
+            <div>
+              <div class="tb-label">Stop loss</div>
+              <div class="tb-value-sm tb-value-danger">{sl:,.2f}</div>
+            </div>
+            <div>
+              <div class="tb-label">Take profit</div>
+              <div class="tb-value-sm tb-value-success">{tp:,.2f}</div>
+            </div>
+            <div>
+              <div class="tb-label">R:R ratio</div>
+              <div class="tb-value-sm">{rr:.2f}</div>
+            </div>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px;align-items:center">
+            <span style="font-size:10px;color:#6e7681;margin-right:2px">Reasons:</span>
+            {reasons_html}
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:11px;color:#6e7681">{strategy_label}</span>
+          </div>
+        </div>
+      </div>
+      <div style="border-top:0.5px solid #21262d;margin-top:12px;padding-top:10px;
+           display:flex;align-items:center;gap:16px">
+        <span style="font-size:12px;color:#6e7681">Risk
+          <span style="color:#f85149;font-family:'JetBrains Mono',monospace;font-weight:500">
+            {risk_pts} pts</span></span>
+        <span style="font-size:12px;color:#6e7681">Reward
+          <span style="color:#3fb950;font-family:'JetBrains Mono',monospace;font-weight:500">
+            {reward_pts} pts</span></span>
+        <span style="font-size:12px;color:#6e7681">R:R
+          <span style="color:#e6edf3;font-family:'JetBrains Mono',monospace;font-weight:500">
+            {rr:.2f}</span></span>
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
 
 
 def _render_history() -> None:
     if not SIGNAL_LOG.exists():
         st.markdown(
-            "<div class='xc-card-flat' style='text-align:center;color:var(--text-muted);"
-            "padding:18px'>No signal log file yet.</div>",
+            "<div style='text-align:center;color:#6e7681;padding:18px;font-size:12px'>"
+            "No signal log file yet.</div>",
             unsafe_allow_html=True,
         )
         return
@@ -122,22 +118,57 @@ def _render_history() -> None:
             continue
     if not rows:
         st.markdown(
-            "<div class='xc-card-flat' style='text-align:center;color:var(--text-muted);"
-            "padding:18px'>No signals logged yet.</div>",
+            "<div style='text-align:center;color:#6e7681;padding:18px;font-size:12px'>"
+            "No signals logged yet.</div>",
             unsafe_allow_html=True,
         )
         return
-    df = pd.DataFrame(rows).sort_values("ts", ascending=False)
+
+    df = pd.DataFrame(rows).sort_values("ts", ascending=False).head(50)
     df["time"] = pd.to_datetime(df["ts"], unit="s", utc=True, errors="coerce").dt.strftime(
-        "%Y-%m-%d %H:%M:%S"
+        "%H:%M:%S"
     )
-    show = df[["time", "direction", "confidence", "entry", "sl", "tp", "rr", "htf_bias"]].head(
-        50
-    ).rename(columns={
-        "time": "Time", "direction": "Direction", "confidence": "Conf %",
-        "entry": "Entry", "sl": "SL", "tp": "TP", "rr": "R:R", "htf_bias": "Bias",
-    })
-    st.dataframe(show, width="stretch", hide_index=True)
+
+    st.markdown('<div class="tb-section-label" style="margin-top:16px">Signal history</div>',
+                unsafe_allow_html=True)
+
+    rows_html = ""
+    for _, sig in df.iterrows():
+        d = sig.get("direction", "—")
+        dir_class = "tb-pill-short" if d == "SHORT" else "tb-pill-long"
+        conf_val = sig.get("confidence", "—")
+        entry_val = sig.get("entry", 0)
+        sl_val = sig.get("sl", 0)
+        tp_val = sig.get("tp", 0)
+        rr_val = sig.get("rr", "—")
+        bias_val = sig.get("htf_bias", "—")
+        ts_val = sig.get("time", "—")
+
+        rows_html += f"""
+        <tr>
+          <td>{ts_val}</td>
+          <td><span class="tb-pill {dir_class}" style="font-size:11px">{d}</span></td>
+          <td>{conf_val}%</td>
+          <td>{entry_val:,.2f}</td>
+          <td style="color:#f85149">{sl_val:,.2f}</td>
+          <td style="color:#3fb950">{tp_val:,.2f}</td>
+          <td>{rr_val}</td>
+          <td style="color:#6e7681">{bias_val}</td>
+        </tr>"""
+
+    st.markdown(f"""
+    <div style="overflow-x:auto">
+    <table class="tb-signal-table">
+      <thead>
+        <tr>
+          <th>Time</th><th>Direction</th><th>Conf %</th>
+          <th>Entry</th><th>SL</th><th>TP</th><th>R:R</th><th>Bias</th>
+        </tr>
+      </thead>
+      <tbody>{rows_html}</tbody>
+    </table>
+    </div>
+    """, unsafe_allow_html=True)
 
 
 def render() -> None:
@@ -151,7 +182,6 @@ def render() -> None:
         htf = cfg.get("scalp_higher_timeframe", htf)
         ltf = cfg.get("scalp_entry_timeframe", ltf)
 
-    st.markdown('<p class="xc-section-title">Current Signal</p>', unsafe_allow_html=True)
     try:
         df_ltf = fetch_bars(symbol, ltf, 300)
         df_htf = fetch_bars(symbol, htf, 300) if htf else None
@@ -168,7 +198,8 @@ def render() -> None:
         info = fetch_symbol_info(symbol)
     except Exception:
         account, info = None, None
+
+    st.markdown('<div class="tb-section-label">Current Signal</div>', unsafe_allow_html=True)
     _render_current(sig, account, info, strategy_name=st.session_state.get("active_strategy"))
 
-    st.markdown('<p class="xc-section-title">Signal History</p>', unsafe_allow_html=True)
     _render_history()

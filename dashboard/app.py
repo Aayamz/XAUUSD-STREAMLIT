@@ -26,19 +26,19 @@ from streamlit_autorefresh import st_autorefresh  # noqa: E402
 from dashboard.state import (  # noqa: E402
     get_bot_runner, get_client,
 )
-from dashboard.styles import inject_css  # noqa: E402
+from dashboard.styles import inject_global_styles  # noqa: E402
 from strategy import available_strategies_for_mode, get_strategy_info  # noqa: E402
 from utils.config import get_config, get_trading_mode  # noqa: E402
 
 
 PAGES = {
-    "Overview":       "house",
-    "Live Chart":     "graph-up",
-    "Signals":        "lightning-charge",
-    "Trades":         "wallet2",
-    "Performance":    "bar-chart-line",
-    "Backtest":       "hourglass-split",
-    "Strategy Maker": "robot",
+    "Overview":       "squares-four",
+    "Live Chart":     "chart-line",
+    "Signals":        "lightning",
+    "Trades":         "arrows-left-right",
+    "Performance":    "chart-bar",
+    "Backtest":       "clock-counter-clockwise",
+    "Strategy Maker": "cpu",
     "Settings":       "gear",
     "Logs":           "terminal",
 }
@@ -48,25 +48,12 @@ PAGES = {
 def _render_appbar() -> None:
     client = get_client()
     is_mock = client.name == "mock" if hasattr(client, "name") else False
-    source_label = "SIMULATED" if is_mock else "LIVE"
-    source_cls = "xc-badge-mock" if is_mock else "xc-badge-live"
-    source_dot = "🟡" if is_mock else "🟢"
 
     symbol = st.session_state.get("symbol", "XAUUSD")
     strategy_mode = st.session_state.get("strategy_mode", "swing").upper()
 
     runner = get_bot_runner()
     auto = runner.is_running()
-    auto_cls = "xc-badge-on" if auto else "xc-badge-off"
-    auto_label = "AUTO-TRADING ON" if auto else "AUTO-TRADING OFF"
-
-    last_tick = ""
-    if auto:
-        st_status = runner.status()
-        ts = st_status.get("last_tick_ts", 0)
-        if ts:
-            age = int(time.time() - ts)
-            last_tick = f"· last tick {age}s ago" if age < 600 else ""
 
     st.markdown(
         f"""
@@ -78,10 +65,12 @@ def _render_appbar() -> None:
           </div>
           <div class="meta">
             <span><b>{symbol}</b></span>
-            <span class="xc-badge {source_cls}">{source_dot} {source_label}</span>
-            <span class="xc-badge {auto_cls}">
+            <span class="xc-badge {'xc-badge-mock' if is_mock else 'xc-badge-live'}">
+              {'🟡 SIMULATED' if is_mock else '🟢 LIVE'}
+            </span>
+            <span class="xc-badge {'xc-badge-on' if auto else 'xc-badge-off'}">
               <span class="xc-dot" style="opacity:{'1' if auto else '0.3'}"></span>
-              {auto_label}{last_tick}
+              {'AUTO-TRADING ON' if auto else 'AUTO-TRADING OFF'}
             </span>
           </div>
         </div>
@@ -94,9 +83,9 @@ def _render_appbar() -> None:
 def _sidebar() -> str:
     cfg = get_config()
     client = get_client()
-    is_mock = client.name == "mock" if hasattr(client, "name") else False
 
     with st.sidebar:
+        # ---- Brand header ---------------------------------------------------
         st.markdown(
             """
             <div style="text-align:center;padding:8px 0 16px 0">
@@ -105,17 +94,10 @@ def _sidebar() -> str:
                             background:linear-gradient(135deg,#f0b90b 0%,#b88800 100%);
                             display:flex;align-items:center;justify-content:center;
                             color:#0a0e1a;font-weight:800;font-size:1.1rem;
-                            box-shadow:0 2px 8px rgba(240,185,11,0.35)">X</div>
-                <div style="text-align:left">
-                  <div style="font-weight:600;font-size:1.05rem;color:var(--text-primary)">XAUUSD SMC</div>
-                  <div style="font-size:0.75rem;color:var(--text-muted)">v{version} · {mode}</div>
-                </div>
+                            box-shadow:0 2px 8px rgba(240,185,11,0.35)">A</div>
               </div>
             </div>
-            """.format(
-                version=cfg.get("app", {}).get("version", "1.0.0"),
-                mode=get_trading_mode().upper(),
-            ),
+            """,
             unsafe_allow_html=True,
         )
 
@@ -123,9 +105,9 @@ def _sidebar() -> str:
         runner = get_bot_runner()
         was_running = runner.is_running()
         auto = st.toggle(
-            "🟢 Auto-Trading",
+            "Auto-Trading",
             value=was_running,
-            help="Run the strategy loop in the background. No need to start main.py.",
+            help="Run the strategy loop in the background.",
             key="auto_trade_toggle",
         )
 
@@ -175,11 +157,12 @@ def _sidebar() -> str:
 
         st.divider()
 
-        # ---- Navigation -----------------------------------------------------
+        # ---- Navigation (Phosphor icons) ------------------------------------
+        icons = [PAGES[k] for k in PAGES]
         choice = option_menu(
             None,
             list(PAGES.keys()),
-            icons=[PAGES[k] for k in PAGES],
+            icons=icons,
             menu_icon=None,
             default_index=0,
             styles={
@@ -226,7 +209,6 @@ def _sidebar() -> str:
                 unsafe_allow_html=True,
             )
             strat_names = [s["name"] for s in scalp_strats]
-            strat_labels = [s.get("label", s["name"]) for s in scalp_strats]
             current = st.session_state.get("active_strategy", "luxalgo_smc")
             try:
                 idx = strat_names.index(current)
@@ -291,12 +273,16 @@ def _sidebar() -> str:
 # --- Setup --------------------------------------------------------------------
 def _setup() -> None:
     st.set_page_config(
-        page_title="XAUUSD SMC Bot",
+        page_title="AURIC — XAUUSD Trading Bot",
         page_icon="🟡",
         layout="wide",
         initial_sidebar_state="expanded",
     )
-    inject_css()
+    inject_global_styles()
+    st.markdown(
+        '<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">',
+        unsafe_allow_html=True,
+    )
     cfg = get_config()
     st.session_state.setdefault("cfg", cfg)
     st.session_state.setdefault("symbol", cfg.get("app", {}).get("symbol", "XAUUSD-VIP"))

@@ -8,7 +8,7 @@ from strategy import create_strategy, list_strategies
 
 
 def render() -> None:
-    st.markdown('<p class="xc-section-title">Strategy Maker</p>', unsafe_allow_html=True)
+    st.markdown('<div class="tb-section-label">Strategy Maker</div>', unsafe_allow_html=True)
 
     tab_preset, tab_custom, tab_browse = st.tabs([
         "Preset Models",
@@ -22,30 +22,50 @@ def render() -> None:
         if not presets:
             st.info("No preset models available.")
         else:
-            st.markdown(
-                "Pre-configured models from the community. Click **Activate** to use one as your scalping strategy.",
-                unsafe_allow_html=False,
-            )
+            col1, col2 = st.columns(2)
+            preset_models = []
             for name, info in presets.items():
-                with st.expander(f"{info.get('label', name)} — {info.get('repo_id', '')}", expanded=False):
+                preset_models.append({
+                    "name": info.get("label", name),
+                    "tag": name,
+                    "author": info.get("repo_id", ""),
+                    "desc": f"TP: {info.get('tp_points', '?')} pts | SL: {info.get('sl_points', '?')} pts | Type: {info.get('model_type', 'joblib')}",
+                    "active": f"preset_{name}" == st.session_state.get("active_strategy"),
+                    "icon": "🧠",
+                })
+
+            for i, m in enumerate(preset_models):
+                col = col1 if i % 2 == 0 else col2
+                with col:
+                    featured = "sm-card-featured" if m["active"] else ""
+                    active_badge = '<span style="font-size:10px;padding:2px 8px;background:#0d419d22;color:#58a6ff;border-radius:20px">Active</span>' if m["active"] else ""
+                    btn_class = "sm-btn-active" if m["active"] else "sm-btn"
+                    btn_label = "✓ Activated" if m["active"] else "Activate"
                     st.markdown(f"""
-                    | Field | Value |
-                    |-------|-------|
-                    | **Repo** | `{info.get('repo_id', '')}` |
-                    | **Model** | `{info.get('model_file', '')}` |
-                    | **Type** | {info.get('model_type', 'joblib')} |
-                    | **TP** | {info.get('tp_points', '?')} pts |
-                    | **SL** | {info.get('sl_points', '?')} pts |
-                    """, unsafe_allow_html=False)
-                    if st.button("Activate", key=f"activate_{name}", type="primary"):
-                        try:
-                            plugin = load_preset(name)
-                            plugin.register(f"preset_{name}")
-                            st.session_state.active_strategy = f"preset_{name}"
-                            st.toast(f"Activated preset: {info.get('label', name)}", icon="✅")
-                            st.rerun()
-                        except Exception as e:
-                            st.error(f"Failed to activate: {e}")
+                    <div class="sm-card {featured}" style="margin-bottom:8px">
+                      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px">
+                        <div style="width:32px;height:32px;background:#0d1117;border-radius:8px;
+                             display:flex;align-items:center;justify-content:center;font-size:16px">{m['icon']}</div>
+                        {active_badge}
+                      </div>
+                      <div style="margin-bottom:4px">
+                        <span style="font-weight:500;font-size:13px;color:#e6edf3">{m['name']}</span>
+                        <span style="margin-left:6px" class="sm-code-tag">{m['tag']}</span>
+                      </div>
+                      <div style="font-size:11px;color:#8b949e;margin-bottom:8px">{m['desc']}</div>
+                      <button class="{btn_class}">{btn_label}</button>
+                    </div>""", unsafe_allow_html=True)
+
+                    if not m["active"]:
+                        if st.button(f"Activate {m['tag']}", key=f"activate_{m['tag']}", label_visibility="collapsed"):
+                            try:
+                                plugin = load_preset(m["tag"])
+                                plugin.register(f"preset_{m['tag']}")
+                                st.session_state.active_strategy = f"preset_{m['tag']}"
+                                st.toast(f"Activated preset: {m['name']}", icon="✅")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Failed to activate: {e}")
 
     # --- Tab 2: Custom Model -------------------------------------------------
     with tab_custom:
@@ -100,7 +120,6 @@ def render() -> None:
                     plugin.min_confidence = min_confidence
                     plugin.min_rr = min_rr
 
-                    # Register the strategy
                     plugin.register(strategy_name)
                     st.session_state.active_strategy = strategy_name
                     st.toast(f"Strategy '{strategy_name}' created and activated!", icon="✅")
@@ -140,18 +159,62 @@ def render() -> None:
                 except Exception as e:
                     st.error(f"Search failed: {e}")
 
-    # --- Active strategies list ----------------------------------------------
-    st.divider()
-    st.markdown('<p class="xc-section-title">Registered Strategies</p>', unsafe_allow_html=True)
+    # --- Registered strategies — card grid ------------------------------------
+    st.markdown('<div class="tb-section-label" style="margin-top:16px">Registered strategies</div>',
+                unsafe_allow_html=True)
+
+    strategy_icon_map = {
+        "hf_scalping":      ("📈", "HF MA crossover scalper"),
+        "ema_crossover":    ("📉", "EMA crossover scalper"),
+        "bollinger_bounce": ("〰️", "Bollinger band bounce"),
+        "rsi_stoch":        ("🎛", "RSI + stochastic combo"),
+        "grid_scalper":     ("⊞", "Grid scalper"),
+        "tick_scalper":     ("⚡", "Tick / news scalper"),
+        "macd_zero_line":   ("🔀", "MACD zero-line"),
+        "luxalgo_smc":      ("🧩", "LuxAlgo SMC"),
+    }
+
+    strategy_desc_map = {
+        "hf_scalping":      "Hybrid MA(5)/MA(20) crossover with optional ML confirmation.",
+        "ema_crossover":    "Pure EMA(5)/EMA(20) crossover. Buys bullish cross, sells bearish.",
+        "bollinger_bounce": "Mean reversion at BB bands with RSI filter. Best on ranging markets.",
+        "rsi_stoch":        "RSI(14) + stochastic dual confirmation. Quick 5-10pt targets.",
+        "grid_scalper":     "Places buy/sell orders at fixed intervals. Profits from oscillation.",
+        "tick_scalper":     "Fires on volume spikes (news events). Tight TP/SL, fast execution.",
+        "macd_zero_line":   "MACD zero-line cross with momentum fallback.",
+        "luxalgo_smc":      "Smart-Money-Concepts - OBs, FVGs, liquidity sweeps, BOS/CHoCH.",
+    }
+
     strategies = list_strategies()
     if not strategies:
         st.info("No strategies registered.")
     else:
-        for s in strategies:
-            active = s["name"] == st.session_state.get("active_strategy")
-            badge = "🟢 ACTIVE" if active else ""
-            st.markdown(
-                f"**{s.get('label', s['name'])}** `{s['name']}` {badge}  \n"
-                f"<small style='color:var(--text-muted)'>{s.get('description', '')}</small>",
-                unsafe_allow_html=True,
-            )
+        cols = st.columns(3)
+        for i, s in enumerate(strategies):
+            name = s["name"]
+            icon, label = strategy_icon_map.get(name, ("⬛", s.get("label", name)))
+            desc = strategy_desc_map.get(name, s.get("description", ""))
+            is_active = (name == st.session_state.get("active_strategy"))
+            btn_class = "sm-btn-active" if is_active else "sm-btn"
+            btn_label = "✓ Active" if is_active else "Activate"
+
+            with cols[i % 3]:
+                st.markdown(f"""
+                <div class="sm-card" style="margin-bottom:8px">
+                  <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+                    <div style="width:28px;height:28px;background:#0d1117;border-radius:8px;
+                         display:flex;align-items:center;justify-content:center;font-size:14px">{icon}</div>
+                    <div style="min-width:0">
+                      <div style="font-weight:500;font-size:12px;color:#e6edf3;
+                           white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{label}</div>
+                      <span class="sm-code-tag">{name}</span>
+                    </div>
+                  </div>
+                  <div style="font-size:11px;color:#8b949e;margin-bottom:8px">{desc}</div>
+                  <button class="{btn_class}">{btn_label}</button>
+                </div>""", unsafe_allow_html=True)
+
+                if not is_active:
+                    if st.button(f"Activate {name}", key=f"activate_{name}", label_visibility="collapsed"):
+                        st.session_state.active_strategy = name
+                        st.rerun()
