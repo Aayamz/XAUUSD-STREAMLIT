@@ -165,6 +165,30 @@ def _sidebar_html() -> str:
         f'</div>'
     )
 
+    # ── Auto-trading status indicator
+    try:
+        from dashboard.state import get_bot_runner
+        _runner = get_bot_runner()
+        _is_running = _runner.is_running()
+    except Exception:
+        _is_running = False
+
+    at_bg = '#0f2d1a' if _is_running else '#161b22'
+    at_clr = '#3fb950' if _is_running else '#6e7681'
+    at_dot = '#3fb950' if _is_running else '#6e7681'
+    at_label = 'LIVE' if _is_running else 'OFF'
+    d.append(
+        f'<div style="border-top:0.5px solid #21262d;padding-top:10px;margin-top:10px">'
+        f'<div style="font-size:9px;color:#6e7681;text-transform:uppercase;'
+        f'letter-spacing:.06em;margin-bottom:6px;padding:0 8px">Auto Trading</div>'
+        f'<div style="display:flex;align-items:center;gap:6px;padding:6px 8px;'
+        f'background:{at_bg};border-radius:5px;margin:0 8px">'
+        f'<span style="width:6px;height:6px;border-radius:50%;background:{at_dot};'
+        f'flex-shrink:0"></span>'
+        f'<span style="font-size:11px;color:{at_clr};font-weight:500">{at_label}</span>'
+        f'</div></div>'
+    )
+
     d.append('</div>')
     return "".join(d)
 
@@ -196,6 +220,69 @@ _sel = st.selectbox(
 if _sel != active_strategy:
     st.query_params.update(strategy=_sel, page=current_page, mode=current_mode)
     st.rerun()
+
+# ── Auto-trading toggle with confirmation ────────────────────────────
+from dashboard.state import get_bot_runner  # noqa: E402
+
+_runner = get_bot_runner()
+_at_running = _runner.is_running()
+
+_col_btn, _col_status = st.columns([1, 3], gap="small")
+with _col_btn:
+    if _at_running:
+        if st.button("⏹  Stop Auto", width="stretch", type="secondary", key="at_stop"):
+            _runner.stop()
+            st.toast("Auto-trading stopped", icon="⏹")
+            st.rerun()
+    else:
+        if st.button("▶  Start Auto", width="stretch", type="primary", key="at_start"):
+            st.session_state["_confirm_auto"] = True
+            st.rerun()
+
+with _col_status:
+    if _at_running:
+        _status = _runner.status()
+        _ticks = _status.get("ticks_run", 0)
+        _trades = _status.get("trades_opened", 0)
+        st.markdown(
+            f'<div style="font-size:11px;color:#8b949e;padding-top:6px">'
+            f'<span style="color:#3fb950">●</span> '
+            f'{_ticks} ticks · {_trades} trades opened</div>',
+            unsafe_allow_html=True,
+        )
+    else:
+        st.markdown(
+            '<div style="font-size:11px;color:#6e7681;padding-top:6px">Auto-trading off</div>',
+            unsafe_allow_html=True,
+        )
+
+# ── Confirmation dialog ──────────────────────────────────────────────
+if st.session_state.get("_confirm_auto"):
+    @st.dialog("Confirm Auto-Trading", width="small")
+    def _confirm_dialog():
+        st.markdown(
+            f"Start auto-trading with **{active_strategy.replace('_', ' ').title()}** "
+            f"in **{current_mode.upper()}** mode?"
+        )
+        st.markdown(
+            '<div style="font-size:12px;color:#8b949e;margin:8px 0">'
+            'The bot will execute trades automatically based on signal output. '
+            'You can stop anytime.</div>',
+            unsafe_allow_html=True,
+        )
+        c1, c2 = st.columns(2)
+        with c1:
+            if st.button("Start Trading", type="primary", width="stretch"):
+                _runner.start()
+                st.session_state.pop("_confirm_auto", None)
+                st.toast("Auto-trading started", icon="▶")
+                st.rerun()
+        with c2:
+            if st.button("Cancel", width="stretch"):
+                st.session_state.pop("_confirm_auto", None)
+                st.rerun()
+
+    _confirm_dialog()
 
 # ── Route to view ────────────────────────────────────────────────────
 from dashboard.views import (  # noqa: E402
