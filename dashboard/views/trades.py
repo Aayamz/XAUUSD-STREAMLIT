@@ -195,8 +195,8 @@ def _render_open_position(p: dict) -> None:
           </div>
           <div style="margin-top:8px;color:var(--text-muted);font-size:0.8rem">
             Ticket <code>{p.get('ticket')}</code>
-            &nbsp;·&nbsp; SL {p.get('sl') or '—':.2f}
-            &nbsp;·&nbsp; TP {p.get('tp') or '—':.2f}
+            &nbsp;·&nbsp; SL {f"{float(p['sl']):.2f}" if p.get('sl') else '—'}
+            &nbsp;·&nbsp; TP {f"{float(p['tp']):.2f}" if p.get('tp') else '—'}
           </div>
         </div>
         """,
@@ -253,13 +253,13 @@ def _render_manual_trade(symbol: str) -> None:
               </div>
               <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px">
                 <div><span style="color:var(--text-muted);font-size:0.7rem">ENTRY</span><br>
-                  <b>{last_sig.get('entry', 0):.2f}</b></div>
+                  <b>{float(last_sig.get('entry', 0)):.2f}</b></div>
                 <div><span style="color:var(--text-muted);font-size:0.7rem">STOP</span><br>
-                  <b class="xc-pnl-neg">{last_sig.get('stop_loss', 0):.2f}</b></div>
+                  <b class="xc-pnl-neg">{float(last_sig.get('stop_loss', 0)):.2f}</b></div>
                 <div><span style="color:var(--text-muted);font-size:0.7rem">TARGET</span><br>
-                  <b class="xc-pnl-pos">{last_sig.get('take_profit', 0):.2f}</b></div>
+                  <b class="xc-pnl-pos">{float(last_sig.get('take_profit', 0)):.2f}</b></div>
                 <div><span style="color:var(--text-muted);font-size:0.7rem">R:R</span><br>
-                  <b class="xc-stat-accent">{last_sig.get('rr', 0):.2f}</b></div>
+                  <b class="xc-stat-accent">{float(last_sig.get('rr', 0)):.2f}</b></div>
               </div>
             </div>
             """,
