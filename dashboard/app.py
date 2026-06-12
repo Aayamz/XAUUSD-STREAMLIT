@@ -22,7 +22,7 @@ st.set_page_config(
     page_title="AURIC — XAUUSD Bot",
     page_icon="⚡",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
 )
 
 # ── Global styles injected once here; each view also calls it ────────
@@ -58,56 +58,37 @@ if st.session_state.get("auto_refresh", True):
     interval = st.session_state.get("refresh_interval", 15) * 1000
     st_autorefresh(interval=interval, key="global_refresh")
 
-# ── Sidebar ──────────────────────────────────────────────────────────
-with st.sidebar:
+# ── Build nav HTML ──────────────────────────────────────────────────
+def _nav_html() -> str:
+    html = '<div style="display:flex;flex-direction:column;align-items:center;padding:12px 0;width:56px;min-height:100vh;background:#0d1117;border-right:0.5px solid #21262d;position:fixed;top:0;left:0;z-index:100">'
     # Logo
-    st.markdown("""
-    <div style="display:flex;flex-direction:column;align-items:center;
-         padding:12px 0 14px">
-      <div style="width:34px;height:34px;border-radius:9px;background:#2d2208;
-           display:flex;align-items:center;justify-content:center;
-           font-size:14px;font-weight:500;color:#d29922">A</div>
-    </div>""", unsafe_allow_html=True)
-
-    # Main nav items
+    html += '<div style="width:34px;height:34px;border-radius:9px;background:#2d2208;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:500;color:#d29922;margin-bottom:16px">A</div>'
+    # Main nav
     for label, icon in NAV_MAIN:
         active = current_page == label
-        st.markdown(f"""
-        <a href="?page={label}" title="{label}" style="
-            display:flex;align-items:center;justify-content:center;
-            width:40px;height:40px;margin:2px auto;border-radius:8px;
-            background:{'#2d2208' if active else 'transparent'};
-            color:{'#d29922' if active else '#6e7681'};
-            font-size:19px;text-decoration:none;">
-          <i class="ph ph-{icon}"></i>
-        </a>""", unsafe_allow_html=True)
-
-    # Spacer pushes bottom items down
-    st.markdown('<div style="height:40px"></div>', unsafe_allow_html=True)
-
-    # Bottom nav items
+        bg = '#2d2208' if active else 'transparent'
+        clr = '#d29922' if active else '#6e7681'
+        html += f'<a href="?page={label}" title="{label}" style="display:flex;align-items:center;justify-content:center;width:40px;height:40px;margin:2px 0;border-radius:8px;background:{bg};color:{clr};font-size:18px;text-decoration:none"><i class="ph ph-{icon}"></i></a>'
+    # Spacer
+    html += '<div style="flex:1"></div>'
+    # Bottom nav
     for label, icon in NAV_BOTTOM:
         active = current_page == label
-        st.markdown(f"""
-        <a href="?page={label}" title="{label}" style="
-            display:flex;align-items:center;justify-content:center;
-            width:40px;height:40px;margin:2px auto;border-radius:8px;
-            background:{'#2d2208' if active else 'transparent'};
-            color:{'#d29922' if active else '#6e7681'};
-            font-size:19px;text-decoration:none;">
-          <i class="ph ph-{icon}"></i>
-        </a>""", unsafe_allow_html=True)
-
-    # Mode badge at the very bottom
+        bg = '#2d2208' if active else 'transparent'
+        clr = '#d29922' if active else '#6e7681'
+        html += f'<a href="?page={label}" title="{label}" style="display:flex;align-items:center;justify-content:center;width:40px;height:40px;margin:2px 0;border-radius:8px;background:{bg};color:{clr};font-size:18px;text-decoration:none"><i class="ph ph-{icon}"></i></a>'
+    # Mode badge
     mode = st.session_state.get("strategy_mode", "swing").upper()
-    st.markdown(f"""
-    <div style="border-top:0.5px solid #21262d;padding-top:10px;
-         margin-top:8px;text-align:center">
-      <div style="font-size:9px;color:#6e7681;text-transform:uppercase;
-           letter-spacing:.05em;margin-bottom:4px">Mode</div>
-      <div style="padding:2px 0;background:#2d2208;border-radius:4px;
-           font-size:9px;font-weight:500;color:#d29922">{mode}</div>
-    </div>""", unsafe_allow_html=True)
+    html += f'<div style="border-top:0.5px solid #21262d;padding-top:8px;margin-top:8px;text-align:center;width:40px"><div style="font-size:8px;color:#6e7681;text-transform:uppercase;letter-spacing:.05em">Mode</div><div style="padding:2px 0;background:#2d2208;border-radius:4px;font-size:9px;font-weight:500;color:#d29922;margin-top:4px">{mode}</div></div>'
+    html += '</div>'
+    return html
+
+# ── Render layout: fixed nav rail + main content ────────────────────
+nav_html = _nav_html()
+st.markdown(nav_html, unsafe_allow_html=True)
+
+# Offset main content to the right of the fixed nav rail
+st.markdown('<style>.block-container{margin-left:56px!important;padding-left:1rem!important;padding-right:1rem!important}</style>', unsafe_allow_html=True)
 
 # ── Route to the correct view ────────────────────────────────────────
 from dashboard.views import (  # noqa: E402
