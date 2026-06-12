@@ -192,7 +192,6 @@ _sel = st.selectbox(
     index=_idx,
     key="_strategy_select",
     label_visibility="collapsed",
-    width="content",
 )
 if _sel != active_strategy:
     st.query_params.update(strategy=_sel, page=current_page, mode=current_mode)
