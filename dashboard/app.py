@@ -88,7 +88,16 @@ nav_html = _nav_html()
 st.markdown(nav_html, unsafe_allow_html=True)
 
 # Offset main content to the right of the fixed nav rail
-st.markdown('<style>.block-container{margin-left:56px!important;padding-left:1rem!important;padding-right:1rem!important}</style>', unsafe_allow_html=True)
+st.markdown('<style>.block-container{margin-left:56px;padding-left:1rem;padding-right:1rem;box-sizing:border-box}</style>', unsafe_allow_html=True)
+
+# ── Strategy mode header (rendered after nav to align with view) ──────────────────────────────────────────────
+st.markdown('<div class="tb-section-label" style="margin-top:16px;margin-left:56px">Strategy Mode</div>', unsafe_allow_html=True)
+current_mode = st.session_state.get("strategy_mode", "swing")
+mode_radio = st.radio("", options=["swing", "scalp"], index=["swing", "scalp"].index(current_mode),
+                      horizontal=True, key="mode_radio", label_visibility="collapsed")
+if mode_radio != current_mode:
+    st.session_state["strategy_mode"] = mode_radio
+    st.rerun()
 
 # ── Route to the correct view ────────────────────────────────────────
 from dashboard.views import (  # noqa: E402
