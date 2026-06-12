@@ -25,6 +25,9 @@ def _tail(path: Path, n: int = 300) -> str:
 
 
 def render() -> None:
+    from dashboard.styles import inject_global_styles
+    inject_global_styles()
+
     st_autorefresh = st.toggle("Auto-refresh", value=True, key="logs_refresh")
     if st_autorefresh:
         from streamlit_autorefresh import st_autorefresh as _ar

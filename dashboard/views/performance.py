@@ -126,6 +126,9 @@ def _demo_curve() -> pd.Series:
 
 
 def render() -> None:
+    from dashboard.styles import inject_global_styles
+    inject_global_styles()
+
     symbol = st.session_state.get("symbol", "XAUUSD")
     lookback = st.sidebar.slider("Lookback (days)", 7, 365, 90, key="perf_lookback") \
         if hasattr(st, "sidebar") else 90

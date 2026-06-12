@@ -140,6 +140,9 @@ def _signed_money(v: float, decimals: int = 2) -> str:
 
 # --- Page ---------------------------------------------------------------------
 def render() -> None:
+    from dashboard.styles import inject_global_styles
+    inject_global_styles()
+
     symbol = st.session_state.get("symbol", "XAUUSD")
     st_autorefresh(interval=10_000, key="trades_refresh")
 

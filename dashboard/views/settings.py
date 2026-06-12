@@ -9,6 +9,9 @@ from utils.encryption import load_credentials, mask, save_credentials
 
 
 def render() -> None:
+    from dashboard.styles import inject_global_styles
+    inject_global_styles()
+
     st.markdown(
         "<h2 style='margin-bottom:4px'>Settings</h2>",
         unsafe_allow_html=True,

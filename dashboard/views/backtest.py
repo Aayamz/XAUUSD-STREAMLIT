@@ -31,6 +31,9 @@ def _df_from_trades(trades) -> pd.DataFrame:
 
 
 def render() -> None:
+    from dashboard.styles import inject_global_styles
+    inject_global_styles()
+
     symbol = st.session_state.get("symbol", "XAUUSD")
     st.subheader("Quick Backtest")
     c1, c2, c3 = st.columns(3)

@@ -7,6 +7,8 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
+from dashboard.styles import inject_global_styles
+from dashboard.utils.pagination import paginate, render_pagination
 from dashboard.state import (
     fetch_account, fetch_bars, fetch_symbol_info, get_strategy,
 )
@@ -15,6 +17,18 @@ from utils.config import PROJECT_ROOT
 
 
 SIGNAL_LOG = PROJECT_ROOT / "logs" / "signals.jsonl"
+
+
+def _load_signal_history() -> list[dict]:
+    if not SIGNAL_LOG.exists():
+        return []
+    rows = []
+    for line in SIGNAL_LOG.read_text(encoding="utf-8").splitlines()[-500:]:
+        try:
+            rows.append(json.loads(line))
+        except Exception:
+            continue
+    return list(reversed(rows))
 
 
 def _render_current(sig, account, info, strategy_name: str | None = None) -> None:
@@ -28,7 +42,7 @@ def _render_current(sig, account, info, strategy_name: str | None = None) -> Non
 
     strategy_label = next(
         (s["label"] for s in list_strategies() if s["name"] == strategy_name),
-        strategy_name or "—",
+        strategy_name or "\u2014",
     )
 
     circumference = 226.19
@@ -42,7 +56,6 @@ def _render_current(sig, account, info, strategy_name: str | None = None) -> Non
     for r in reasons:
         reasons_html += '<span class="tb-tag">' + r + '</span> '
 
-    # Build the SVG ring
     svg_html = (
         '<svg width="96" height="96" viewBox="0 0 96 96">'
         '<circle cx="48" cy="48" r="36" fill="none" stroke="#21262d" stroke-width="7"/>'
@@ -67,8 +80,8 @@ def _render_current(sig, account, info, strategy_name: str | None = None) -> Non
         '<div style="flex:1;min-width:0">'
         '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px">'
         '<div><div class="tb-label">Entry</div><div class="tb-value-sm">' + f"{entry:,.2f}" + '</div></div>'
-        '<div><div class="tb-label">Stop loss</div><div class="tb-value-sm tb-value-danger">' + f"{sl:,.2f}" + '</div></div>'
-        '<div><div class="tb-label">Take profit</div><div class="tb-value-sm tb-value-success">' + f"{tp:,.2f}" + '</div></div>'
+        '<div><div class="tb-label">Stop loss</div><div class="tb-value-sm c-danger">' + f"{sl:,.2f}" + '</div></div>'
+        '<div><div class="tb-label">Take profit</div><div class="tb-value-sm c-success">' + f"{tp:,.2f}" + '</div></div>'
         '<div><div class="tb-label">R:R ratio</div><div class="tb-value-sm">' + f"{rr:.2f}" + '</div></div>'
         '</div>'
         '<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px;align-items:center">'
@@ -91,76 +104,9 @@ def _render_current(sig, account, info, strategy_name: str | None = None) -> Non
     st.markdown(card_html, unsafe_allow_html=True)
 
 
-def _render_history() -> None:
-    if not SIGNAL_LOG.exists():
-        st.markdown(
-            "<div style='text-align:center;color:#6e7681;padding:18px;font-size:12px'>"
-            "No signal log file yet.</div>",
-            unsafe_allow_html=True,
-        )
-        return
-    rows = []
-    for line in SIGNAL_LOG.read_text(encoding="utf-8").splitlines()[-200:]:
-        try:
-            rows.append(json.loads(line))
-        except Exception:
-            continue
-    if not rows:
-        st.markdown(
-            "<div style='text-align:center;color:#6e7681;padding:18px;font-size:12px'>"
-            "No signals logged yet.</div>",
-            unsafe_allow_html=True,
-        )
-        return
-
-    df = pd.DataFrame(rows).sort_values("ts", ascending=False).head(50)
-    df["time"] = pd.to_datetime(df["ts"], unit="s", utc=True, errors="coerce").dt.strftime(
-        "%H:%M:%S"
-    )
-
-    st.markdown('<div class="tb-section-label" style="margin-top:16px">Signal history</div>',
-                unsafe_allow_html=True)
-
-    rows_html = ""
-    for _, sig in df.iterrows():
-        d = sig.get("direction", "—")
-        dir_class = "tb-pill-short" if d == "SHORT" else "tb-pill-long"
-        conf_val = sig.get("confidence", "—")
-        entry_val = sig.get("entry", 0)
-        sl_val = sig.get("sl", 0)
-        tp_val = sig.get("tp", 0)
-        rr_val = sig.get("rr", "—")
-        bias_val = sig.get("htf_bias", "—")
-        ts_val = sig.get("time", "—")
-
-        rows_html += (
-            '<tr>'
-            '<td>' + str(ts_val) + '</td>'
-            '<td><span class="tb-pill ' + dir_class + '" style="font-size:11px">' + str(d) + '</span></td>'
-            '<td>' + str(conf_val) + '%</td>'
-            '<td>' + f"{entry_val:,.2f}" + '</td>'
-            '<td style="color:#f85149">' + f"{sl_val:,.2f}" + '</td>'
-            '<td style="color:#3fb950">' + f"{tp_val:,.2f}" + '</td>'
-            '<td>' + str(rr_val) + '</td>'
-            '<td style="color:#6e7681">' + str(bias_val) + '</td>'
-            '</tr>'
-        )
-
-    table_html = (
-        '<div style="overflow-x:auto">'
-        '<table class="tb-signal-table">'
-        '<thead><tr>'
-        '<th>Time</th><th>Direction</th><th>Conf %</th>'
-        '<th>Entry</th><th>SL</th><th>TP</th><th>R:R</th><th>Bias</th>'
-        '</tr></thead>'
-        '<tbody>' + rows_html + '</tbody>'
-        '</table></div>'
-    )
-
-    st.markdown(table_html, unsafe_allow_html=True)
-
-
 def render() -> None:
+    inject_global_styles()
+
     symbol = st.session_state.get("symbol", "XAUUSD")
     cfg = st.session_state.get("cfg", {}).get("strategy", {})
     htf = cfg.get("higher_timeframe", "H4")
@@ -191,4 +137,61 @@ def render() -> None:
     st.markdown('<div class="tb-section-label">Current Signal</div>', unsafe_allow_html=True)
     _render_current(sig, account, info, strategy_name=st.session_state.get("active_strategy"))
 
-    _render_history()
+    # ─── SIGNAL HISTORY (paginated) ──────────────────────────────────
+    st.markdown('<div class="tb-section-label">Signal history</div>', unsafe_allow_html=True)
+
+    all_signals = _load_signal_history()
+
+    if not all_signals:
+        st.markdown(
+            '<div style="padding:40px;text-align:center;'
+            'color:#6e7681;font-size:13px;border:0.5px solid #21262d;'
+            'border-radius:10px">No signals recorded yet.</div>',
+            unsafe_allow_html=True,
+        )
+        return
+
+    page_signals, page_num, total_pages = paginate(
+        all_signals, page_size=15, key="signals_page"
+    )
+
+    rows_html = ""
+    for sig_row in page_signals:
+        direction = sig_row.get("direction", "")
+        dir_cls = "tb-pill-short" if direction == "SHORT" else "tb-pill-long"
+        sl_val = sig_row.get("sl", sig_row.get("stop_loss", 0))
+        tp_val = sig_row.get("tp", sig_row.get("take_profit", 0))
+        try:
+            sl_str = f"{float(sl_val):,.2f}"
+            tp_str = f"{float(tp_val):,.2f}"
+            en_str = f"{float(sig_row.get('entry', 0)):,.2f}"
+        except (TypeError, ValueError):
+            sl_str = tp_str = en_str = "\u2014"
+        rows_html += (
+            '<tr>'
+            '<td style="color:#6e7681">' + str(sig_row.get('time', '\u2014')) + '</td>'
+            '<td><span class="tb-pill ' + dir_cls + '">' + direction + '</span></td>'
+            '<td>' + str(sig_row.get('confidence', '\u2014')) + '%</td>'
+            '<td>' + en_str + '</td>'
+            '<td class="c-danger">' + sl_str + '</td>'
+            '<td class="c-success">' + tp_str + '</td>'
+            '<td>' + str(sig_row.get('rr', '\u2014')) + '</td>'
+            '<td style="color:#6e7681">' + str(sig_row.get('htf_bias', '\u2014')) + '</td>'
+            '</tr>'
+        )
+
+    st.markdown(
+        '<div style="overflow-x:auto;border:0.5px solid #21262d;border-radius:10px;overflow:hidden">'
+        '<table class="tb-table">'
+        '<thead><tr>'
+        '<th>Time</th><th>Direction</th><th>Conf %</th>'
+        '<th>Entry</th><th>Stop loss</th><th>Take profit</th>'
+        '<th>R:R</th><th>Bias</th>'
+        '</tr></thead>'
+        '<tbody>' + rows_html + '</tbody>'
+        '</table></div>',
+        unsafe_allow_html=True,
+    )
+
+    st.markdown('<div style="height:8px"></div>', unsafe_allow_html=True)
+    render_pagination(page_num, total_pages, len(all_signals), 15, "signals_page")

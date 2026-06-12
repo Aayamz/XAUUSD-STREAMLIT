@@ -78,6 +78,9 @@ def render_tradingview(symbol: str, interval: str, height: int = 620) -> None:
 
 
 def render() -> None:
+    from dashboard.styles import inject_global_styles
+    inject_global_styles()
+
     cfg = st.session_state.get("cfg", {})
     chart_cfg = cfg.get("dashboard", {})
 

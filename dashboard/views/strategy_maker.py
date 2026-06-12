@@ -8,6 +8,9 @@ from strategy import create_strategy, list_strategies
 
 
 def render() -> None:
+    from dashboard.styles import inject_global_styles
+    inject_global_styles()
+
     st.markdown('<div class="tb-section-label">Strategy Maker</div>', unsafe_allow_html=True)
 
     tab_preset, tab_custom, tab_browse = st.tabs([

@@ -32,6 +32,9 @@ def _load_recent_signals(limit: int = 6) -> list[dict]:
 
 
 def render() -> None:
+    from dashboard.styles import inject_global_styles
+    inject_global_styles()
+
     st_autorefresh(interval=10_000, key="home_refresh")
     symbol = st.session_state.get("symbol", "XAUUSD")
     cfg = st.session_state.get("cfg", {})
