@@ -40,11 +40,11 @@ def render_pagination(page: int, total_pages: int, total_items: int,
         )
     with c_prev:
         if st.button("\u2190 Prev", key=f"{key}_prev", disabled=(page <= 1),
-                     use_container_width=True):
+                     width="stretch"):
             st.session_state[key] = page - 1
             st.rerun()
     with c_next:
         if st.button("Next \u2192", key=f"{key}_next", disabled=(page >= total_pages),
-                     use_container_width=True):
+                     width="stretch"):
             st.session_state[key] = page + 1
             st.rerun()
