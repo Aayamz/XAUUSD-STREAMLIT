@@ -57,7 +57,7 @@ def render() -> None:
                     </div>""", unsafe_allow_html=True)
 
                     if not m["active"]:
-                        if st.button(f"Activate {m['tag']}", key=f"activate_{m['tag']}", label_visibility="collapsed"):
+                        if st.button(f"Activate {m['tag']}", key=f"activate_{m['tag']}", type="secondary"):
                             try:
                                 plugin = load_preset(m["tag"])
                                 plugin.register(f"preset_{m['tag']}")
@@ -215,6 +215,6 @@ def render() -> None:
                 </div>""", unsafe_allow_html=True)
 
                 if not is_active:
-                    if st.button(f"Activate {name}", key=f"activate_{name}", label_visibility="collapsed"):
+                    if st.button(f"Activate {name}", key=f"activate_{name}", type="secondary"):
                         st.session_state.active_strategy = name
                         st.rerun()
